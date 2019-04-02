@@ -97,50 +97,27 @@ void StartDefaultTask(void const * argument);
 QueueHandle_t xQueue1;
 QueueHandle_t xQueue2;
 uint8_t playMode[2];
-void vUserInput(void *pvParameters){
-	int32_t SentButton1State;
-	int32_t SentButton2State;
+void UserInput(void *pvParameters){
+	uint8_t volData = 0xCF;
+	uint8_t play[2];
 	for(;;){
     if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)==GPIO_PIN_RESET){
-		         SentButton1State = 1;
-		         xQueueSendToBack( xQueue1, &SentButton1State, 0 );
+		            	 volData = volData + 15;
     }
 	 if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==GPIO_PIN_RESET){
-	         SentButton2State = 1;
-	    	 xQueueSendToBack( xQueue2, &SentButton2State, 0 );
+	        	     volData = volData - 15;
 	 }
+	 if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
+	 	  		     play[0] = 0x05;
+	 	  		     play[1] = volData;
+	 	  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
+	 	  		  	 play[0]= 0x06;
+	 	  		  	HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
+	 	  }
+	vTaskDelay(10);
 	}
 
 }
-void vAmpControl(void *pvParameters){
-	int32_t RecButton1State;
-    int32_t RecButton2State;
-    uint8_t volData = 0xCF;
-    uint8_t play[2];
-    for(;;){
-     if((xQueue1||xQueue2) !=0){
-     if( xQueue1 != 0){
-      xQueueReceive( xQueue1, &RecButton1State, 0 );
-      if(RecButton1State == 1){
-    	 volData = volData + 50;
-      }
-     }
-     if( xQueue2 != 0){
-    	  xQueueReceive( xQueue2, &RecButton2State, 0 );
-    	 if(RecButton2State == 1){
-    	         	 volData = volData - 50;
-    	          }
-     }
-     if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
- 	  		     play[0] = 0x05;
- 	  		     play[1] = volData;
- 	  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
- 	  		  	 play[0]= 0x06;
- 	  		  	HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
- 	  }
-    }
-    }
-  }
 /* USER CODE END 0 */
 
 /**
@@ -148,7 +125,7 @@ void vAmpControl(void *pvParameters){
   * @retval int
   */
 int main(void)
-{
+  {
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -157,10 +134,8 @@ int main(void)
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-  playMode[0] = 0x04;
-  playMode[1] = 0x05;
-  /* USER CODE BEGIN Init */
 
+  /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
@@ -177,9 +152,12 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
- 	  	         HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
- 	               HAL_I2C_Master_Transmit(&hi2c1,0xD4,playMode,2,10);
- 	    }
+	         HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
+  		     playMode[0] = 0x04;
+  		     playMode[1] = 0x05;
+  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,playMode,2,10);
+  }
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -212,8 +190,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  xTaskCreate(vAmpControl , "AmpControl", 1000, NULL, 1, NULL );
-  xTaskCreate(vUserInput,"UserInput", 1000, NULL, 1, NULL );
+  xTaskCreate(UserInput,"UserInput", 1000, 0, 1, 0 );
   vTaskStartScheduler();
   while (1)
   {
