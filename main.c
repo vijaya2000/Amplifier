@@ -4,35 +4,45 @@
   * @file           : main.c
   * @brief          : Main program body
   ******************************************************************************
-  ** This notice applies to any and all portions of this file
+  * This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
   * USER CODE END. Other portions of this file, whether 
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2019 STMicroelectronics
+  * Copyright (c) 2019 STMicroelectronics International N.V. 
+  * All rights reserved.
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
+  * Redistribution and use in source and binary forms, with or without 
+  * modification, are permitted, provided that the following conditions are met:
   *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * 1. Redistribution of source code must retain the above copyright notice, 
+  *    this list of conditions and the following disclaimer.
+  * 2. Redistributions in binary form must reproduce the above copyright notice,
+  *    this list of conditions and the following disclaimer in the documentation
+  *    and/or other materials provided with the distribution.
+  * 3. Neither the name of STMicroelectronics nor the names of other 
+  *    contributors to this software may be used to endorse or promote products 
+  *    derived from this software without specific written permission.
+  * 4. This software, including modifications and/or derivative works of this 
+  *    software, must execute solely and exclusively on microcontroller or
+  *    microprocessor devices manufactured by or for STMicroelectronics.
+  * 5. Redistribution and use of this software other than as permitted under 
+  *    this license is void and will automatically terminate your rights under 
+  *    this license. 
+  *
+  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT 
+  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+  * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
+  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT 
+  * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, 
+  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
@@ -80,50 +90,48 @@ static void MX_I2C1_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 static uint8_t volData = 0xCF;
+QueueHandle_t xQueue1;
+QueueHandle_t xQueue2;
 uint8_t playMode[2];
-osMessageQDef(input1, 5, uint16_t);
-osMessageQId input1;
-osMessageQDef(input2, 5, uint16_t);
-osMessageQId input2;
 void UserInput(void const *argument){
 	uint8_t play[2];
-	int32_t RecButton1State;
-	int32_t RecButton2State;
-	osEvent evt;
+	GPIO_PinState  BlackButtonState;
+	GPIO_PinState  RedButtonState;
 	for(;;){
-		if((input1||input2) !=0){
-		     if(input1 != 0){
-		      evt = osMessageGet(input1, 1);
-		      if(evt.status == osEventMessage) {
-		    	  RecButton1State = evt.value.v;
-		      }
-		      if(RecButton1State == 1){
-		    	 volData = volData + 10;
-		      }
-		     }
-		     if(input2 != 0){
-		      evt = osMessageGet(input2, 1);
-		      if(evt.status == osEventMessage) {
-		    	  RecButton2State = evt.value.v;
-		      }
-		       if(RecButton2State == 1){
-		    	         	 volData = volData - 10;
-		       }
-		     }
-		     if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
-		 	  		     play[0] = 0x05;
-		 	  		     play[1] = volData;
-		 	  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
-		 	  		  	 play[0]= 0x06;
-		 	  		  	HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
-		 	  }
-		    }
+	BlackButtonState = HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0);
+	RedButtonState = HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1);
+    if(BlackButtonState == GPIO_PIN_RESET){
+    	HAL_Delay(100);
+    	if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)== BlackButtonState){
+    	 if((volData + 10) <= 0xCF){
+    		volData = volData + 10;
+    	}else{
+    		volData = 0xCF;
+    	}
+      }
+    }
+	 if(RedButtonState==GPIO_PIN_RESET){
+		 HAL_Delay(100);
+		 if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)== RedButtonState){
+			 if((volData - 10) <= 0xCF){
+			     		volData = volData - 10;
+			     	}else{
+			     		volData = 0x00;
+			     	}
+		 }
+	 }
+	 if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
+	 	  		     play[0] = 0x05;
+	 	  		     play[1] = volData;
+	 	  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
+	 	  		  	 play[0]= 0x06;
+	 	  		  	HAL_I2C_Master_Transmit(&hi2c1,0xD4,play,2,10);
+	 	  }
 	}
 
 }
@@ -161,13 +169,12 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   if(HAL_I2C_IsDeviceReady(&hi2c1,0xD4,2,10) == HAL_OK){
- 	         HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
-   		     playMode[0] = 0x04;
-   		     playMode[1] = 0x05;
-   		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,playMode,2,10);
-   }
-  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+	         HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);
+  		     playMode[0] = 0x04;
+  		     playMode[1] = 0x05;
+  		  	 HAL_I2C_Master_Transmit(&hi2c1,0xD4,playMode,2,10);
+  }
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -186,11 +193,11 @@ int main(void)
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  osThreadDef(User,UserInput, osPriorityAboveNormal, 0, 100);
+  osThreadCreate(osThread(User), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  osThreadDef(User,UserInput, osPriorityAboveNormal, 0, 100);
-  osThreadCreate(osThread(User), NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -377,8 +384,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PB0 PB1 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD3_Pin */
@@ -391,27 +398,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void EXTI0_IRQHandler(void) {
-	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-}
-void EXTI1_IRQHandler(void) {
-	HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
-}
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	int32_t SentButton1State;
-    int32_t SentButton2State;
-	if(GPIO_Pin == GPIO_PIN_0) {
-		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)==GPIO_PIN_RESET){
-				         SentButton1State = 1;
-				         osMessagePut(input1,SentButton1State,1);
-	    }
-	} else if(GPIO_Pin == GPIO_PIN_1){
-		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==GPIO_PIN_RESET){
-						 SentButton2State = 1;
-						 osMessagePut(input2,SentButton2State,1);
-	    }
-	}
-}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
